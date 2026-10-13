@@ -51,11 +51,18 @@ PlasmoidItem {
                 root.nightLight = out === "true"
             } else if (source === root.cmdGetProfile) {
                 root.profile = out
+            } else if (source === root.cmdGetTemp) {
+                var mc = parseInt(out)
+                root.hwTemp = isNaN(mc) ? 0 : mc / 1000
             }
         }
     }
     readonly property string cmdGetVolume: "wpctl get-volume @DEFAULT_AUDIO_SINK@"
     readonly property string cmdGetProfile: "powerprofilesctl get"
+    // ksystemstats reports 0 for every CPU temperature on some newer CPUs
+    // (e.g. Ryzen 9000), so fall back to the CPU's own hwmon sensor.
+    readonly property string cmdGetTemp: "for h in /sys/class/hwmon/hwmon*; do case $(cat $h/name 2>/dev/null) in k10temp|zenpower|coretemp|cpu_thermal) cat $h/temp1_input; exit;; esac; done"
+    property real hwTemp: 0
     readonly property string cmdGetNight: "qdbus6 org.kde.KWin /org/kde/KWin/NightLight org.freedesktop.DBus.Properties.Get org.kde.KWin.NightLight enabled"
     property bool nightLight: false
     function setNightLight(on) {
@@ -99,6 +106,7 @@ PlasmoidItem {
         exec.run(cmdGetVolume)
         exec.run(cmdGetProfile)
         exec.run(cmdGetNight)
+        if (!(sTemp.value > 0)) exec.run(cmdGetTemp)
     }
     function setVolume(v) {
         root.volume = v
@@ -761,7 +769,7 @@ PlasmoidItem {
                     }
                     Gauge {
                         Layout.fillWidth: true; Layout.fillHeight: true
-                        readonly property real t: sTemp.value || 0
+                        readonly property real t: sTemp.value > 0 ? sTemp.value : root.hwTemp
                         icon: "temperature-normal"
                         value: t
                         color: t >= 90 ? root.cHot : (t >= 75 ? root.cWarn : root.cAccent)
