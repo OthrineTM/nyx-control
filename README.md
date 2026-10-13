@@ -4,11 +4,13 @@ A control center for the KDE Plasma 6 panel. Notifications, clipboard, system ga
 
 All colors come from your active Plasma theme, so it matches whatever theme you use.
 
+![Nyx Control popup with notifications, system gauges, sliders, quick tiles and power profiles](screenshots/control.png)
+
 ## Features
 
 - **Notifications tab:** history grouped by app, dismiss one or clear all. The bell toggles Do Not Disturb.
 - **Clipboard tab:** your clipboard history.
-- **Gauges:** ring meters for CPU load, memory, storage (the `/` partition) and CPU temperature, plus uptime.
+- **Gauges:** ring meters for CPU load, memory, storage (the `/` partition) and CPU temperature, plus uptime and battery level.
 - **Sliders:** screen brightness and volume (click the speaker to mute).
 - **Quick tiles:**
   - **Bluetooth:** shows the connected audio device
