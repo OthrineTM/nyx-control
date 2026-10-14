@@ -30,6 +30,10 @@ All colors come from your active Plasma theme, so it matches whatever theme you 
 
 ## Install
 
+**From the KDE Store:** right-click your panel → **Add or Manage Widgets…** → **Get New Widgets…** → **Download New Plasma Widgets…**, search for **Nyx Control** and click **Install**. Or download it from its [KDE Store page](https://store.kde.org/p/2378514).
+
+**From GitHub:**
+
 ```bash
 git clone https://github.com/OthrineTM/nyx-control.git
 kpackagetool6 --type Plasma/Applet --install nyx-control/package
