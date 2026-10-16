@@ -49,6 +49,11 @@ Then right-click your panel → **Add or Manage Widgets…**, search for **Nyx C
 
 The widget uses some of Plasma's private QML modules (sessions, brightness, clipboard), the same ones the built-in widgets use. A big Plasma update could break them.
 
+## See also
+
+- [Nyx Player](https://github.com/OthrineTM/nyx-player): panel music player with a spinning vinyl cover and an Easy Effects preset switcher
+- [Nyx Clock](https://github.com/OthrineTM/nyx-clock): customizable desktop clock with weekday, date and weather
+
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
