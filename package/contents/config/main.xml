@@ -10,6 +10,8 @@
     <!-- 0 rings, 1 bars, 2 big numbers -->
     <entry name="gaugeStyle" type="Int"><default>0</default></entry>
     <entry name="showGauges" type="Bool"><default>true</default></entry>
+    <!-- GPU load and temperature gauges; hidden anyway when no GPU is reported -->
+    <entry name="showGpuGauges" type="Bool"><default>true</default></entry>
     <entry name="showSliders" type="Bool"><default>true</default></entry>
     <entry name="showTiles" type="Bool"><default>true</default></entry>
     <entry name="showSession" type="Bool"><default>true</default></entry>

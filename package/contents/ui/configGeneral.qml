@@ -14,6 +14,7 @@ KCM.SimpleKCM {
     property alias cfg_layoutMode: layoutMode.currentIndex
     property alias cfg_gaugeStyle: gaugeStyle.currentIndex
     property alias cfg_showGauges: showGauges.checked
+    property alias cfg_showGpuGauges: showGpuGauges.checked
     property alias cfg_showSliders: showSliders.checked
     property alias cfg_showTiles: showTiles.checked
     property alias cfg_showSession: showSession.checked
@@ -87,6 +88,12 @@ KCM.SimpleKCM {
         }
 
         QQC2.CheckBox { id: showGauges; Kirigami.FormData.label: "Show:"; text: "Gauges" }
+        QQC2.CheckBox {
+            id: showGpuGauges
+            text: "GPU load and temperature gauges"
+            enabled: showGauges.checked
+            leftPadding: Kirigami.Units.gridUnit
+        }
         QQC2.CheckBox { id: showSliders; text: "Brightness and volume" }
         QQC2.CheckBox { id: showTiles; text: "Quick tiles" }
         QQC2.CheckBox { id: showSession; text: "Session buttons" }

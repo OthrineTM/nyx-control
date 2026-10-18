@@ -84,6 +84,9 @@ PlasmoidItem {
             } else if (source === root.cmdGetTemp) {
                 var mc = parseInt(out)
                 root.hwTemp = isNaN(mc) ? 0 : mc / 1000
+            } else if (source === root.cmdGetGpuTemp) {
+                var mg = parseInt(out)
+                root.hwGpuTemp = isNaN(mg) ? 0 : mg / 1000
             }
         }
     }
@@ -93,6 +96,9 @@ PlasmoidItem {
     // (e.g. Ryzen 9000), so fall back to the CPU's own hwmon sensor.
     readonly property string cmdGetTemp: "for h in /sys/class/hwmon/hwmon*; do case $(cat $h/name 2>/dev/null) in k10temp|zenpower|coretemp|cpu_thermal) cat $h/temp1_input; exit;; esac; done"
     property real hwTemp: 0
+    // same fallback for the GPU (AMD and Intel expose their temperature through hwmon)
+    readonly property string cmdGetGpuTemp: "for h in /sys/class/hwmon/hwmon*; do case $(cat $h/name 2>/dev/null) in amdgpu|i915|xe) cat $h/temp1_input; exit;; esac; done"
+    property real hwGpuTemp: 0
     readonly property string cmdGetNight: "qdbus6 org.kde.KWin /org/kde/KWin/NightLight org.freedesktop.DBus.Properties.Get org.kde.KWin.NightLight enabled"
     property bool nightLight: false
     function setNightLight(on) {
@@ -137,6 +143,7 @@ PlasmoidItem {
         exec.run(cmdGetProfile)
         exec.run(cmdGetNight)
         if (!(sTemp.value > 0)) exec.run(cmdGetTemp)
+        if (showGpu && !(sGpuTemp.value > 0)) exec.run(cmdGetGpuTemp)
     }
     function setVolume(v) {
         root.volume = v
@@ -209,6 +216,11 @@ PlasmoidItem {
     Sensors.Sensor { id: sTemp; sensorId: "cpu/all/maximumTemperature"; enabled: root.expanded || root.onDesktop; updateRateLimit: 1500 }
     Sensors.Sensor { id: sMemUsed; sensorId: "memory/physical/used"; enabled: (root.expanded || root.onDesktop) && root.cfg.gaugeStyle === 2; updateRateLimit: 3000 }
     Sensors.Sensor { id: sMemTotal; sensorId: "memory/physical/total"; enabled: (root.expanded || root.onDesktop) && root.cfg.gaugeStyle === 2; updateRateLimit: 60000 }
+    Sensors.Sensor { id: sGpu; sensorId: "gpu/all/usage"; enabled: (root.expanded || root.onDesktop) && root.cfg.showGpuGauges; updateRateLimit: 1500 }
+    Sensors.Sensor { id: sGpuTemp; sensorId: "gpu/gpu0/temperature"; enabled: (root.expanded || root.onDesktop) && root.cfg.showGpuGauges; updateRateLimit: 1500 }
+    // the GPU gauges only appear when the system reports a GPU
+    readonly property bool showGpu: cfg.showGpuGauges && typeof sGpu.value === "number"
+    readonly property real gpuTemp: sGpuTemp.value > 0 ? sGpuTemp.value : hwGpuTemp
     Sensors.Sensor { id: sUptime; sensorId: "os/system/uptime"; enabled: root.expanded || root.onDesktop; updateRateLimit: 30000 }
 
     // ---- reusable bits ------------------------------------------------
@@ -961,6 +973,24 @@ PlasmoidItem {
                         color: t >= 90 ? root.cHot : (t >= 75 ? root.cWarn : root.cAccent)
                         valueText: Math.round(t) + "°"
                         label: "CPU temp"
+                    }
+                    Gauge {
+                        visible: root.showGpu
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
+                        icon: "video-card"
+                        value: sGpu.value || 0
+                        valueText: Math.round(sGpu.value || 0) + "%"
+                        label: "GPU load"
+                    }
+                    Gauge {
+                        visible: root.showGpu
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
+                        readonly property real t: root.gpuTemp
+                        icon: "temperature-normal"
+                        value: t
+                        color: t >= 90 ? root.cHot : (t >= 75 ? root.cWarn : root.cAccent)
+                        valueText: t > 0 ? Math.round(t) + "°" : "–"
+                        label: "GPU temp"
                     }
                 }
 

@@ -11,6 +11,7 @@ By default all colors come from your active Plasma theme, so it matches whatever
 - **Notifications tab:** history grouped by app, dismiss one or clear all. The bell toggles Do Not Disturb.
 - **Clipboard tab:** your clipboard history.
 - **Gauges:** ring meters for CPU load, memory, storage (the `/` partition) and CPU temperature, plus uptime and battery level.
+- **GPU gauges:** GPU load and GPU temperature join the other gauges in every gauge style, in the popup and on the desktop. They only appear when your system reports a GPU, and you can turn them off in the settings (*Show → GPU load and temperature gauges*).
 - **Sliders:** screen brightness and volume (click the speaker to mute).
 - **Quick tiles:**
   - **Bluetooth:** shows the connected audio device
