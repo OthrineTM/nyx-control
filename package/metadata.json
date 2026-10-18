@@ -7,7 +7,7 @@
         "Description": "Control center: notifications, system gauges, brightness, volume, session and power profile",
         "Icon": "system-shutdown",
         "Category": "System Information",
-        "Version": "1.1",
+        "Version": "1.2",
         "License": "GPL-3.0-or-later",
         "Authors": [{ "Name": "OthrineTM" }],
         "Website": "https://github.com/OthrineTM/nyx-control"

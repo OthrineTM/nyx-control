@@ -11,6 +11,13 @@ import org.kde.plasma.core as PlasmaCore
 KCM.SimpleKCM {
     property string cfg_panelIcon
     property string cfg_panelIconDefault
+    property alias cfg_layoutMode: layoutMode.currentIndex
+    property alias cfg_gaugeStyle: gaugeStyle.currentIndex
+    property alias cfg_showGauges: showGauges.checked
+    property alias cfg_showSliders: showSliders.checked
+    property alias cfg_showTiles: showTiles.checked
+    property alias cfg_showSession: showSession.checked
+    property alias cfg_showProfiles: showProfiles.checked
 
     Kirigami.FormLayout {
         QQC2.Button {
@@ -65,5 +72,24 @@ KCM.SimpleKCM {
                 }
             }
         }
+
+        Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: "Layout" }
+
+        QQC2.ComboBox {
+            id: layoutMode
+            Kirigami.FormData.label: "Layout:"
+            model: ["Notifications on the left", "System only (compact)", "Notifications on the right"]
+        }
+        QQC2.ComboBox {
+            id: gaugeStyle
+            Kirigami.FormData.label: "Gauges:"
+            model: ["Rings", "Bars", "Big numbers"]
+        }
+
+        QQC2.CheckBox { id: showGauges; Kirigami.FormData.label: "Show:"; text: "Gauges" }
+        QQC2.CheckBox { id: showSliders; text: "Brightness and volume" }
+        QQC2.CheckBox { id: showTiles; text: "Quick tiles" }
+        QQC2.CheckBox { id: showSession; text: "Session buttons" }
+        QQC2.CheckBox { id: showProfiles; text: "Power profiles" }
     }
 }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
+import QtQuick.Effects
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PC3
@@ -17,11 +18,40 @@ import org.kde.plasma.private.clipboard as Clip
 PlasmoidItem {
     id: root
 
-    // colors come from the active KDE theme
-    readonly property color cAccent: Kirigami.Theme.highlightColor
-    readonly property color cText: Kirigami.Theme.textColor
+    // colors come from the shared Nyx style, which follows the KDE theme by default
+    readonly property color themeText: Kirigami.Theme.textColor
+    readonly property color themeAccent: Kirigami.Theme.highlightColor
+    readonly property color themeBackground: Kirigami.Theme.backgroundColor
+    property NyxStyle style: NyxStyle {
+        cfg: root.cfg
+        themeText: root.themeText
+        themeAccent: root.themeAccent
+        themeBackground: root.themeBackground
+    }
+    readonly property color cAccent: style.accent
+    readonly property color cText: style.text
     readonly property color cWarn: Kirigami.Theme.neutralTextColor
     readonly property color cHot: Kirigami.Theme.negativeTextColor
+    readonly property real cardRadius: style.radius
+    readonly property var cfg: Plasmoid.configuration
+    readonly property bool onDesktop: Plasmoid.formFactor === PlasmaCore.Types.Planar
+
+    // on the desktop the widget draws its own styled panel
+    Plasmoid.backgroundHints: onDesktop && style.hasSurface ? PlasmaCore.Types.NoBackground : PlasmaCore.Types.DefaultBackground
+
+    Plasmoid.contextualActions: [
+        PlasmaCore.Action {
+            text: "Next Style: " + root.style.nextPreset().name
+            icon.name: "preferences-desktop-theme"
+            onTriggered: root.style.apply(root.style.nextPreset())
+        },
+        PlasmaCore.Action {
+            text: "Next Gauge Style: " + root.gaugeStyleNames[(root.cfg.gaugeStyle + 1) % 3]
+            icon.name: "view-statistics"
+            onTriggered: root.cfg.gaugeStyle = (root.cfg.gaugeStyle + 1) % 3
+        }
+    ]
+    readonly property var gaugeStyleNames: ["Rings", "Bars", "Numbers"]
 
     Plasmoid.icon: Plasmoid.configuration.panelIcon
     toolTipMainText: "Control Center"
@@ -122,7 +152,7 @@ PlasmoidItem {
         id: refreshTimer
         interval: 2000
         repeat: true
-        running: root.expanded
+        running: root.expanded || root.onDesktop
         triggeredOnStart: true
         onTriggered: root.refresh()
     }
@@ -173,32 +203,168 @@ PlasmoidItem {
     readonly property bool pluggedIn: pmSource.data["AC Adapter"]?.["Plugged in"] ?? false
     readonly property string batteryState: pmSource.data["Battery"]?.["State"] ?? ""
 
-    Sensors.Sensor { id: sCpu; sensorId: "cpu/all/usage"; enabled: root.expanded; updateRateLimit: 1500 }
-    Sensors.Sensor { id: sMem; sensorId: "memory/physical/usedPercent"; enabled: root.expanded; updateRateLimit: 1500 }
-    Sensors.Sensor { id: sDisk; sensorId: root.rootDisk; enabled: root.expanded; updateRateLimit: 10000 }
-    Sensors.Sensor { id: sTemp; sensorId: "cpu/all/maximumTemperature"; enabled: root.expanded; updateRateLimit: 1500 }
-    Sensors.Sensor { id: sUptime; sensorId: "os/system/uptime"; enabled: root.expanded; updateRateLimit: 30000 }
+    Sensors.Sensor { id: sCpu; sensorId: "cpu/all/usage"; enabled: root.expanded || root.onDesktop; updateRateLimit: 1500 }
+    Sensors.Sensor { id: sMem; sensorId: "memory/physical/usedPercent"; enabled: root.expanded || root.onDesktop; updateRateLimit: 1500 }
+    Sensors.Sensor { id: sDisk; sensorId: root.rootDisk; enabled: root.expanded || root.onDesktop; updateRateLimit: 10000 }
+    Sensors.Sensor { id: sTemp; sensorId: "cpu/all/maximumTemperature"; enabled: root.expanded || root.onDesktop; updateRateLimit: 1500 }
+    Sensors.Sensor { id: sMemUsed; sensorId: "memory/physical/used"; enabled: (root.expanded || root.onDesktop) && root.cfg.gaugeStyle === 2; updateRateLimit: 3000 }
+    Sensors.Sensor { id: sMemTotal; sensorId: "memory/physical/total"; enabled: (root.expanded || root.onDesktop) && root.cfg.gaugeStyle === 2; updateRateLimit: 60000 }
+    Sensors.Sensor { id: sUptime; sensorId: "os/system/uptime"; enabled: root.expanded || root.onDesktop; updateRateLimit: 30000 }
 
     // ---- reusable bits ------------------------------------------------
     component Card: Rectangle {
-        radius: Kirigami.Units.cornerRadius * 2
-        color: Qt.alpha(root.cText, 0.05)
-        border.color: Qt.alpha(root.cText, 0.08)
+        radius: root.cardRadius
+        color: root.style.card
+        border.color: root.style.cardEdge
     }
 
+    // one meter, drawn as a ring, a bar row or a big-number tile (gaugeStyle)
     component Gauge: Item {
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 6
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 6
-        property alias value: dial.value
-        property alias valueText: dial.valueText
-        property alias label: dial.label
-        property alias icon: dial.icon
-        property alias color: dial.color
+        id: gauge
+        property real value: 0
+        property string valueText
+        property string label
+        property string icon
+        property string detail
+        property color color: root.cAccent
+        readonly property int kind: root.cfg.gaugeStyle
+        Layout.minimumWidth: kind === 1 ? Kirigami.Units.gridUnit * 10 : Kirigami.Units.gridUnit * 6
+        Layout.minimumHeight: kind === 0 ? Kirigami.Units.gridUnit * 6 : kind === 1 ? Kirigami.Units.gridUnit * 2.6 : Kirigami.Units.gridUnit * 5
         GaugeDial {
-            id: dial
+            visible: gauge.kind === 0
             anchors.centerIn: parent
             width: Math.min(parent.width, parent.height)
             height: width
+            value: gauge.value
+            valueText: gauge.valueText
+            label: gauge.label
+            icon: gauge.icon
+            color: gauge.color
+        }
+        GaugeBar {
+            visible: gauge.kind === 1
+            anchors.fill: parent
+            gauge: gauge
+        }
+        GaugeTile {
+            visible: gauge.kind === 2
+            anchors.fill: parent
+            gauge: gauge
+        }
+    }
+
+    component GaugeBar: Card {
+        id: gb
+        required property var gauge
+        property real shown: Math.min(100, Math.max(0, gauge.value))
+        Behavior on shown { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: Kirigami.Units.largeSpacing
+            anchors.rightMargin: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.largeSpacing
+            Kirigami.Icon {
+                source: gb.gauge.icon
+                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                RowLayout {
+                    Layout.fillWidth: true
+                    PC3.Label {
+                        Layout.fillWidth: true
+                        text: gb.gauge.label
+                        font.capitalization: Font.AllUppercase
+                        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                        font.letterSpacing: 1
+                        opacity: 0.7
+                        elide: Text.ElideRight
+                    }
+                    PC3.Label {
+                        text: gb.gauge.valueText
+                        font.bold: true
+                        font.features: { "tnum": 1 }
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.max(4, Kirigami.Units.gridUnit * 0.3)
+                    radius: height / 2
+                    color: root.style.track
+                    Rectangle {
+                        width: parent.width * gb.shown / 100
+                        height: parent.height
+                        radius: parent.radius
+                        color: gb.gauge.color
+                    }
+                }
+            }
+        }
+    }
+
+    component GaugeTile: Card {
+        id: gt
+        required property var gauge
+        property real shown: Math.min(100, Math.max(0, gauge.value))
+        Behavior on shown { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
+        // big number, unit and label, like a phone widget
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Kirigami.Units.largeSpacing * 1.5
+            spacing: 0
+            RowLayout {
+                Layout.fillWidth: true
+                Rectangle {
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                    radius: height / 2
+                    color: Qt.alpha(gt.gauge.color, 0.22)
+                    Kirigami.Icon {
+                        anchors.centerIn: parent
+                        source: gt.gauge.icon
+                        width: Kirigami.Units.iconSizes.small
+                        height: width
+                    }
+                }
+                Item { Layout.fillWidth: true }
+                PC3.Label {
+                    Layout.alignment: Qt.AlignTop
+                    text: gt.gauge.label
+                    font.capitalization: Font.AllUppercase
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    font.letterSpacing: 1
+                    opacity: 0.6
+                }
+            }
+            Item { Layout.fillHeight: true }
+            PC3.Label {
+                text: gt.gauge.valueText
+                font.pixelSize: Math.min(gt.height * 0.36, gt.width * 0.3)
+                font.weight: Font.Bold
+                font.features: { "tnum": 1 }
+                color: gt.gauge.color === root.cAccent ? root.cText : gt.gauge.color
+            }
+            PC3.Label {
+                visible: gt.gauge.detail.length > 0
+                text: gt.gauge.detail
+                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                opacity: 0.6
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+                Layout.preferredHeight: 3
+                radius: 1.5
+                color: root.style.track
+                Rectangle {
+                    width: parent.width * gt.shown / 100
+                    height: parent.height
+                    radius: parent.radius
+                    color: gt.gauge.color
+                }
+            }
         }
     }
 
@@ -320,10 +486,10 @@ PlasmoidItem {
         topPadding: Kirigami.Units.smallSpacing
         bottomPadding: Kirigami.Units.smallSpacing
         background: Rectangle {
-            radius: Kirigami.Units.cornerRadius * 2
-            color: tile.active ? Qt.alpha(root.cAccent, tile.hovered ? 0.55 : 0.42)
-                               : Qt.alpha(root.cText, tile.hovered ? 0.10 : 0.05)
-            border.color: tile.active ? Qt.alpha(root.cAccent, 0.9) : Qt.alpha(root.cText, 0.08)
+            radius: root.cardRadius
+            color: tile.active ? (tile.hovered ? root.style.activeHover : root.style.active)
+                               : (tile.hovered ? root.style.cardHover : root.style.card)
+            border.color: tile.active ? root.style.activeEdge : root.style.cardEdge
             Behavior on color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
         }
         contentItem: RowLayout {
@@ -396,9 +562,9 @@ PlasmoidItem {
         Layout.preferredHeight: Kirigami.Units.gridUnit * 3.5
         hoverEnabled: true
         background: Rectangle {
-            radius: Kirigami.Units.cornerRadius * 2
-            color: bb.pressed ? Qt.alpha(root.cAccent, 0.42) : Qt.alpha(root.cText, bb.hovered ? 0.10 : 0.05)
-            border.color: Qt.alpha(bb.hovered ? root.cAccent : root.cText, bb.hovered ? 0.6 : 0.08)
+            radius: root.cardRadius
+            color: bb.pressed ? root.style.active : (bb.hovered ? root.style.cardHover : root.style.card)
+            border.color: bb.hovered ? Qt.alpha(root.cAccent, 0.6) : root.style.cardEdge
             Behavior on color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
         }
         contentItem: Item {
@@ -416,18 +582,35 @@ PlasmoidItem {
 
     // ---- popup ---------------------------------------------------------
     fullRepresentation: Item {
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 46
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 40
+        readonly property bool systemOnly: root.cfg.layoutMode === 1
+        Layout.preferredWidth: Kirigami.Units.gridUnit * (systemOnly ? 27 : 46)
+        Layout.minimumWidth: Kirigami.Units.gridUnit * (systemOnly ? 22 : 40)
         Layout.preferredHeight: Kirigami.Units.gridUnit * 40
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 34
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 20
+
+        // labels and controls follow the style's colors
+        Kirigami.Theme.textColor: root.style.text
+        Kirigami.Theme.highlightColor: root.style.accent
+
+        NyxSurface {
+            anchors.fill: parent
+            visible: root.onDesktop && root.style.hasSurface
+            style: root.style
+        }
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: Kirigami.Units.largeSpacing
+            anchors.margins: root.onDesktop && root.style.hasSurface ? Math.max(Kirigami.Units.largeSpacing, root.style.radius * 0.6)
+                                                                    : Kirigami.Units.largeSpacing
             spacing: Kirigami.Units.largeSpacing * 2
+            // layoutMode: 0 notifications left, 1 system only, 2 notifications right
+            layoutDirection: root.cfg.layoutMode === 2 ? Qt.RightToLeft : Qt.LeftToRight
+            layer.enabled: root.onDesktop && root.style.textShadow > 0
+            layer.effect: NyxTextShadow { style: root.style }
 
             // ===== notifications =====
             ColumnLayout {
+                visible: !parent.parent.systemOnly
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 17
                 Layout.maximumWidth: Kirigami.Units.gridUnit * 17
                 Layout.fillHeight: true
@@ -740,35 +923,38 @@ PlasmoidItem {
                 }
 
                 GridLayout {
+                    visible: root.cfg.showGauges
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
+                    Layout.fillHeight: root.cfg.gaugeStyle !== 1
                     columns: 2
                     rowSpacing: Kirigami.Units.largeSpacing
                     columnSpacing: Kirigami.Units.largeSpacing
                 
                     Gauge {
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
                         icon: "cpu"
                         value: sCpu.value || 0
                         valueText: Math.round(sCpu.value || 0) + "%"
                         label: "CPU load"
                     }
                     Gauge {
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
                         icon: "memory"
                         value: sMem.value || 0
                         valueText: Math.round(sMem.value || 0) + "%"
                         label: "Memory"
+                        detail: sMemUsed.value > 0 && sMemTotal.value > 0
+                            ? (sMemUsed.value / 1073741824).toFixed(1) + " / " + (sMemTotal.value / 1073741824).toFixed(1) + " GB" : ""
                     }
                     Gauge {
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
                         icon: "drive-harddisk"
                         value: sDisk.value || 0
                         valueText: Math.round(sDisk.value || 0) + "%"
                         label: "Storage"
                     }
                     Gauge {
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.fillWidth: true; Layout.fillHeight: root.cfg.gaugeStyle !== 1
                         readonly property real t: sTemp.value > 0 ? sTemp.value : root.hwTemp
                         icon: "temperature-normal"
                         value: t
@@ -778,7 +964,14 @@ PlasmoidItem {
                     }
                 }
 
+                // with bar gauges the meters are short, so the rest of the column moves up
+                Item {
+                    visible: !root.cfg.showGauges || root.cfg.gaugeStyle === 1
+                    Layout.fillHeight: true
+                }
+
                 Card {
+                    visible: root.cfg.showSliders
                     Layout.fillWidth: true
                     implicitHeight: sliders.implicitHeight + Kirigami.Units.largeSpacing * 2
                     ColumnLayout {
@@ -853,6 +1046,7 @@ PlasmoidItem {
                 }
 
                 GridLayout {
+                    visible: root.cfg.showTiles
                     Layout.fillWidth: true
                     columns: 3
                     rowSpacing: Kirigami.Units.largeSpacing
@@ -919,6 +1113,7 @@ PlasmoidItem {
                 }
 
                 RowLayout {
+                    visible: root.cfg.showSession
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.largeSpacing
                     BigButton { icon.name: "system-lock-screen"; tip: "Lock"; onClicked: session.lock() }
@@ -928,6 +1123,7 @@ PlasmoidItem {
                 }
 
                 RowLayout {
+                    visible: root.cfg.showProfiles
                     Layout.fillWidth: true
                     spacing: Kirigami.Units.largeSpacing
                     Repeater {
@@ -948,10 +1144,10 @@ PlasmoidItem {
                             rightPadding: Kirigami.Units.largeSpacing
                             onClicked: root.setProfile(modelData.id)
                             background: Rectangle {
-                                radius: Kirigami.Units.cornerRadius * 2
-                                color: seg.current ? Qt.alpha(root.cAccent, seg.hovered ? 0.55 : 0.42)
-                                                   : Qt.alpha(root.cText, seg.hovered ? 0.10 : 0.05)
-                                border.color: seg.current ? Qt.alpha(root.cAccent, 0.9) : Qt.alpha(root.cText, 0.08)
+                                radius: root.cardRadius
+                                color: seg.current ? (seg.hovered ? root.style.activeHover : root.style.active)
+                                                   : (seg.hovered ? root.style.cardHover : root.style.card)
+                                border.color: seg.current ? root.style.activeEdge : root.style.cardEdge
                                 Behavior on color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
                             }
                             contentItem: Item {

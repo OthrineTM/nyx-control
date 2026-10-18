@@ -7,4 +7,9 @@ ConfigModel {
         icon: "configure"
         source: "configGeneral.qml"
     }
+    ConfigCategory {
+        name: "Style"
+        icon: "preferences-desktop-theme"
+        source: "configStyle.qml"
+    }
 }
