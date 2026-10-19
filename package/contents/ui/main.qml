@@ -27,6 +27,8 @@ PlasmoidItem {
         themeText: root.themeText
         themeAccent: root.themeAccent
         themeBackground: root.themeBackground
+        // in the panel popup the background is Plasma's, so text keeps the color scheme's colors
+        onPlasmaBackground: !root.onDesktop
     }
     readonly property color cAccent: style.accent
     readonly property color cText: style.text
