@@ -600,7 +600,9 @@ PlasmoidItem {
         Layout.preferredWidth: Kirigami.Units.gridUnit * (systemOnly ? 27 : 46)
         Layout.minimumWidth: Kirigami.Units.gridUnit * (systemOnly ? 22 : 40)
         Layout.preferredHeight: Kirigami.Units.gridUnit * 40
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 20
+        // on the desktop the widget can't be made shorter than its content, so nothing spills out of the box
+        Layout.minimumHeight: root.onDesktop ? Math.max(Kirigami.Units.gridUnit * 20, content.implicitHeight + content.anchors.margins * 2)
+                                             : Kirigami.Units.gridUnit * 20
 
         // labels and controls follow the style's colors
         Kirigami.Theme.textColor: root.style.text
@@ -613,6 +615,7 @@ PlasmoidItem {
         }
 
         RowLayout {
+            id: content
             anchors.fill: parent
             anchors.margins: root.onDesktop && root.style.hasSurface ? Math.max(Kirigami.Units.largeSpacing, root.style.radius * 0.6)
                                                                     : Kirigami.Units.largeSpacing
