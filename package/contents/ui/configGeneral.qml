@@ -9,6 +9,7 @@ import org.kde.plasma.core as PlasmaCore
 
 // Icon picker modelled on Kickoff's "Icon:" button
 KCM.SimpleKCM {
+    property alias cfg_clickAction: clickField.text
     property string cfg_panelIcon
     property string cfg_panelIconDefault
     property alias cfg_layoutMode: layoutMode.currentIndex
@@ -98,5 +99,9 @@ KCM.SimpleKCM {
         QQC2.CheckBox { id: showTiles; text: "Quick tiles" }
         QQC2.CheckBox { id: showSession; text: "Session buttons" }
         QQC2.CheckBox { id: showProfiles; text: "Power profiles" }
+        NyxClickField {
+            id: clickField
+            Kirigami.FormData.label: "Clicking a gauge opens:"
+        }
     }
 }

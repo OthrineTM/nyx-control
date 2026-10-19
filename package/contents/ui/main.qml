@@ -41,6 +41,9 @@ PlasmoidItem {
     // on the desktop the widget draws its own styled panel
     Plasmoid.backgroundHints: onDesktop && style.hasSurface ? PlasmaCore.Types.NoBackground : PlasmaCore.Types.DefaultBackground
 
+    // what a click on the widget opens (an app, a web address or a command; see NyxLauncher)
+    NyxLauncher { id: launcher; target: root.cfg.clickAction || "" }
+
     Plasmoid.contextualActions: [
         PlasmaCore.Action {
             text: "Next Style: " + root.style.nextPreset().name
@@ -944,6 +947,9 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     Layout.fillHeight: root.cfg.gaugeStyle !== 1
                     columns: 2
+                    // a click on the gauges opens what the settings say (System Monitor)
+                    TapHandler { enabled: launcher.active; onTapped: launcher.open() }
+                    HoverHandler { enabled: launcher.active; cursorShape: Qt.PointingHandCursor }
                     rowSpacing: Kirigami.Units.largeSpacing
                     columnSpacing: Kirigami.Units.largeSpacing
                 

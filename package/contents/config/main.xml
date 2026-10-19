@@ -19,6 +19,8 @@
 
     <!-- shared Nyx style (see NyxPresets.js); the default "Theme" look matches Plasma -->
     <entry name="styleShared" type="Bool"><default>true</default></entry>
+    <!-- what a click opens: an app's desktop name, a web address or a command; choices separated by ; -->
+    <entry name="clickAction" type="String"><default>org.kde.plasma-systemmonitor</default></entry>
     <entry name="stylePreset" type="String"><default>theme</default></entry>
     <entry name="styleTint" type="String"><default></default></entry>
     <entry name="styleOpacity" type="Int"><default>85</default></entry>
